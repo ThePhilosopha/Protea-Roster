@@ -5,16 +5,16 @@ import { StaffMember, DayStatus, ShiftType } from '../types';
  */
 export const generateDateRange = (startDate: Date, days: number = 60): DayStatus[] => {
   const dates: DayStatus[] = [];
-  
+
   for (let i = 0; i < days; i++) {
     const d = new Date(startDate);
     d.setDate(startDate.getDate() + i);
-    
+
     dates.push({
       date: d,
       // Create a purely cosmetic "WorkDay" placeholder here, 
       // actual logic happens per staff member
-      isWorkDay: false, 
+      isWorkDay: false,
       dayName: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
       dayNumber: d.getDate(),
       fullDateStr: d.toISOString().split('T')[0],
@@ -30,17 +30,17 @@ export const generateDateRange = (startDate: Date, days: number = 60): DayStatus
 export const isStaffWorking = (staff: StaffMember, targetDateStr: string): boolean => {
   const cycleStart = new Date(staff.cycleStartDate);
   const target = new Date(targetDateStr);
-  
+
   // Reset hours to ensure pure date comparison
-  cycleStart.setHours(0,0,0,0);
-  target.setHours(0,0,0,0);
+  cycleStart.setHours(0, 0, 0, 0);
+  target.setHours(0, 0, 0, 0);
 
   // Time difference in milliseconds
   const diffTime = target.getTime() - cycleStart.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   const totalCycleLength = staff.patternOn + staff.patternOff;
-  
+
   // Mathematical modulo that handles negative numbers correctly (if cycle start is in future)
   const dayInCycle = ((diffDays % totalCycleLength) + totalCycleLength) % totalCycleLength;
 
@@ -65,12 +65,23 @@ export interface ShiftState {
  * - Otherwise -> Normal / Solid
  */
 export const calculateShiftState = (staff: StaffMember, day: DayStatus): ShiftState => {
+  // 1. Check for manual day-off override first
+  const override = staff.overrides?.find(o => o.date === day.fullDateStr);
+  if (override?.isDayOff) {
+    return {
+      isWorking: false,
+      shiftType: 'Off',
+      visualType: 'Dash',
+      label: 'Day Off (Manual)'
+    };
+  }
+
   const working = isStaffWorking(staff, day.fullDateStr);
 
   if (!working) {
-    return { 
-      isWorking: false, 
-      shiftType: 'Off', 
+    return {
+      isWorking: false,
+      shiftType: 'Off',
       visualType: 'Dash',
       label: 'Off'
     };
@@ -80,17 +91,17 @@ export const calculateShiftState = (staff: StaffMember, day: DayStatus): ShiftSt
   const isSaturday = day.dayName === 'SAT';
 
   if (isSaturday) {
-    return { 
-      isWorking: true, 
-      shiftType: 'Half', 
+    return {
+      isWorking: true,
+      shiftType: 'Half',
       visualType: 'Hollow',
       label: 'Half Shift'
     };
   }
 
-  return { 
-    isWorking: true, 
-    shiftType: 'Normal', 
+  return {
+    isWorking: true,
+    shiftType: 'Normal',
     visualType: 'Solid',
     label: 'Normal Shift'
   };
