@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { RosterHeader } from './components/RosterHeader';
 import { RosterGrid } from './components/RosterGrid';
 import { AdminModal } from './components/AdminModal';
-import { useRosterData } from './hooks/useRosterData';
+import { useRosterData, DEMO_CSV_URL } from './hooks/useRosterData';
 import { generateDateRange } from './utils/rosterLogic';
-import { DisplayMode } from './types';
+import { DisplayMode, StaffMember } from './types';
 
 interface AppProps {
   staffData?: StaffMember[];
