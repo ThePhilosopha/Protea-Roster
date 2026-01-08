@@ -6,12 +6,16 @@ import { useRosterData } from './hooks/useRosterData';
 import { generateDateRange } from './utils/rosterLogic';
 import { DisplayMode } from './types';
 
-const App: React.FC = () => {
+interface AppProps {
+  staffData?: StaffMember[];
+}
+
+const App: React.FC<AppProps> = ({ staffData }) => {
   // Settings State (Persisted)
   const [daysToShow, setDaysToShow] = useState(() => parseInt(localStorage.getItem('protea_days') || '45', 10));
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() => (localStorage.getItem('protea_display_mode') as DisplayMode) || 'dots');
 
-  const { staff, loading, updateStaffData } = useRosterData();
+  const { staff, loading, updateStaffData } = useRosterData(DEMO_CSV_URL, staffData);
 
   // Regenerate dates whenever daysToShow changes
   const dates = useMemo(() => generateDateRange(new Date(), daysToShow), [daysToShow]);

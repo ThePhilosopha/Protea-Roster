@@ -7,6 +7,7 @@ export interface ShiftOverride {
   startTime?: string; // "08:00" - optional when marking day off
   endTime?: string; // "17:00" - optional when marking day off
   isDayOff?: boolean; // true = force day off regardless of pattern
+  shiftType?: ShiftType; // Optional override: 'Normal' or 'Half'
 }
 
 export interface StaffMember {

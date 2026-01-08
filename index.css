@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-fashion-white text-fashion-black antialiased selection:bg-fashion-black selection:text-fashion-white;
+  }
+}
+
+/* Custom Config from index.html */
+:root {
+  --fashion-black: #12100E;
+  --fashion-white: #F2EFE9;
+  --fashion-gray: #5C554F;
+  --fashion-dark-beige: #CFC8BC;
+  --fashion-dark-brown: #2A231E;
+  --fashion-accent: #8F3434;
+}
+
+.dark {
+  --fashion-black: #F2EFE9;
+  --fashion-white: #12100E;
+}
+
+/* Animations */
+@keyframes blurIn {
+  0% { filter: blur(15px); opacity: 0; transform: scale(0.98); }
+  100% { filter: blur(0); opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideIn {
+  0% { transform: translateX(-10px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.animate-blur-in { animation: blurIn 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+.animate-fade-in-up { animation: fadeInUp 1s ease-out forwards; }
+.animate-fade-in { animation: fadeIn 0.8s ease-out forwards; }
+.animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+
+.fade-in { animation: fadeIn 0.8s ease-out forwards; }

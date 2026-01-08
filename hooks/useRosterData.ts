@@ -2,22 +2,33 @@ import { useState, useEffect, useCallback } from 'react';
 import Papa from 'papaparse';
 import { StaffMember, CsvRow, ShiftType, EmploymentStatus } from '../types';
 
-// Updated fallback data: Nigel K is now Permanent to remove specific highlighting
+// Default staff roster
 const FALLBACK_STAFF: StaffMember[] = [
-  { id: '1', name: 'Miranda P.', role: 'Editor', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
-  { id: '2', name: 'Andy S.', role: 'Assistant', cycleStartDate: '2024-01-02', patternOn: 4, patternOff: 2, shiftType: 'Half', status: 'Permanent' },
-  { id: '3', name: 'Emily C.', role: 'Senior', cycleStartDate: '2024-01-03', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
-  { id: '4', name: 'Nigel K.', role: 'Creative', cycleStartDate: '2024-01-01', patternOn: 3, patternOff: 4, shiftType: 'Normal', status: 'Permanent' },
-  { id: '5', name: 'Serena V.', role: 'Fashion', cycleStartDate: '2024-01-05', patternOn: 4, patternOff: 4, shiftType: 'Half', status: 'Permanent' },
+  { id: '1', name: 'Shane', role: 'Manager', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '2', name: 'Phil', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '3', name: 'Tiku', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '4', name: 'Kyra', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '5', name: 'Angie', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '6', name: 'Selinah', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '7', name: 'Thembi', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
+  { id: '8', name: 'Marble', role: 'Staff', cycleStartDate: '2024-01-01', patternOn: 5, patternOff: 2, shiftType: 'Normal', status: 'Permanent' },
 ];
 
-export const DEMO_CSV_URL = ''; 
+export const DEMO_CSV_URL = '';
 
-export const useRosterData = (csvUrl: string = DEMO_CSV_URL) => {
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export const useRosterData = (csvUrl: string = DEMO_CSV_URL, initialData?: StaffMember[]) => {
+  const [staff, setStaff] = useState<StaffMember[]>(initialData || []);
+  const [loading, setLoading] = useState<boolean>(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [isUsingLocalData, setIsUsingLocalData] = useState(false);
+
+  // Sync with initialData if it changes (e.g. Wix property update)
+  useEffect(() => {
+    if (initialData && initialData.length > 0) {
+      setStaff(initialData);
+      setLoading(false);
+    }
+  }, [initialData]);
 
   // Load data
   useEffect(() => {
@@ -43,7 +54,7 @@ export const useRosterData = (csvUrl: string = DEMO_CSV_URL) => {
 
       // 2. Fetch CSV if no local data
       setIsUsingLocalData(false);
-      
+
       if (!csvUrl) {
         // No URL provided, use fallback immediately without error
         setStaff(FALLBACK_STAFF);
@@ -53,17 +64,17 @@ export const useRosterData = (csvUrl: string = DEMO_CSV_URL) => {
 
       try {
         const response = await fetch(csvUrl);
-        
+
         // Handle 404 or other network errors gracefully by using fallback
         if (!response.ok) {
-           console.warn(`CSV Fetch failed (${response.status}), using fallback data.`);
-           setStaff(FALLBACK_STAFF);
-           setLoading(false);
-           return;
+          console.warn(`CSV Fetch failed (${response.status}), using fallback data.`);
+          setStaff(FALLBACK_STAFF);
+          setLoading(false);
+          return;
         }
-        
+
         const csvText = await response.text();
-        
+
         Papa.parse<CsvRow>(csvText, {
           header: true,
           skipEmptyLines: true,
@@ -87,7 +98,7 @@ export const useRosterData = (csvUrl: string = DEMO_CSV_URL) => {
             }
             setLoading(false);
           },
-          error: (err) => { 
+          error: (err) => {
             console.error(err);
             setStaff(FALLBACK_STAFF);
             setLoading(false);

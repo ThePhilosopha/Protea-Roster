@@ -105,6 +105,55 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
     setSelectedShift(null);
   };
 
+  // Handler to set shift type: Normal, Half, or Off
+  const handleSetShiftType = (type: ShiftType | 'Off') => {
+    if (!selectedShift || !onUpdateStaff) return;
+
+    const newStaff = staff.map(p => {
+      if (p.id !== selectedShift.staffId) return p;
+
+      const currentOverrides = p.overrides ? [...p.overrides] : [];
+      const existingIndex = currentOverrides.findIndex(o => o.date === selectedShift.dateStr);
+
+      if (type === 'Off') {
+        // Mark as day off
+        const newOverride = {
+          date: selectedShift.dateStr,
+          isDayOff: true,
+          shiftType: undefined
+        };
+        if (existingIndex >= 0) {
+          currentOverrides[existingIndex] = newOverride;
+        } else {
+          currentOverrides.push(newOverride);
+        }
+      } else {
+        // Set specific shift type (Normal or Half)
+        const defaultTimes = type === 'Half'
+          ? { start: '08:00', end: '13:00' }
+          : { start: '08:00', end: '17:00' };
+
+        const newOverride = {
+          date: selectedShift.dateStr,
+          startTime: defaultTimes.start,
+          endTime: defaultTimes.end,
+          isDayOff: false,
+          shiftType: type
+        };
+        if (existingIndex >= 0) {
+          currentOverrides[existingIndex] = newOverride;
+        } else {
+          currentOverrides.push(newOverride);
+        }
+      }
+
+      return { ...p, overrides: currentOverrides };
+    });
+
+    onUpdateStaff(newStaff);
+    setSelectedShift(null);
+  };
+
   const handleSaveTime = () => {
     if (!selectedShift || !onUpdateStaff) return;
 
@@ -302,23 +351,64 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
             {/* Time Display & Edit */}
             <div className="w-full">
               {isAdmin ? (
-                <div className="bg-fashion-gray/10 dark:bg-fashion-white/5 p-4 space-y-3 w-full border border-fashion-black/10 dark:border-fashion-white/10">
-                  {/* Toggle Day Off Button */}
-                  <button
-                    onClick={handleToggleDayOff}
-                    className={`w-full py-2 text-[9px] uppercase tracking-widest font-bold transition-colors border ${selectedShift.isDayOff
-                      ? 'bg-green-600 text-white border-green-600 hover:bg-green-700'
-                      : 'bg-fashion-accent/10 text-fashion-accent border-fashion-accent hover:bg-fashion-accent hover:text-white'
-                      }`}
-                  >
-                    {selectedShift.isDayOff ? '✓ Restore Working Day' : 'Mark as Day Off'}
-                  </button>
+                <div className="bg-fashion-gray/10 dark:bg-fashion-white/5 p-4 space-y-4 w-full border border-fashion-black/10 dark:border-fashion-white/10">
+                  {/* Shift Type Selector */}
+                  <div>
+                    <div className="text-[9px] uppercase tracking-widest font-bold opacity-60 mb-3 text-center">Set Shift Type</div>
+                    <div className="flex gap-2">
+                      {/* Normal Shift Button */}
+                      <button
+                        onClick={() => handleSetShiftType('Normal')}
+                        className={`flex-1 py-3 border text-[9px] uppercase tracking-widest font-bold transition-all flex flex-col items-center gap-1.5 ${selectedShift.shiftType === 'Normal' && !selectedShift.isDayOff
+                            ? 'bg-fashion-black text-fashion-white dark:bg-fashion-white dark:text-fashion-black border-fashion-black dark:border-fashion-white'
+                            : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-black/10 dark:hover:bg-fashion-white/10'
+                          }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-current"></span>
+                        <span>Normal</span>
+                      </button>
 
-                  {/* Only show time edit if not a day off */}
+                      {/* Half Shift Button */}
+                      <button
+                        onClick={() => handleSetShiftType('Half')}
+                        className={`flex-1 py-3 border text-[9px] uppercase tracking-widest font-bold transition-all flex flex-col items-center gap-1.5 ${selectedShift.shiftType === 'Half' && !selectedShift.isDayOff
+                            ? 'bg-fashion-black text-fashion-white dark:bg-fashion-white dark:text-fashion-black border-fashion-black dark:border-fashion-white'
+                            : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-black/10 dark:hover:bg-fashion-white/10'
+                          }`}
+                      >
+                        <span className="w-3 h-3 rounded-full border-2 border-current"></span>
+                        <span>Half</span>
+                      </button>
+
+                      {/* Day Off Button */}
+                      <button
+                        onClick={() => handleSetShiftType('Off')}
+                        className={`flex-1 py-3 border text-[9px] uppercase tracking-widest font-bold transition-all flex flex-col items-center gap-1.5 ${selectedShift.isDayOff
+                            ? 'bg-fashion-accent text-white border-fashion-accent'
+                            : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-accent/10'
+                          }`}
+                      >
+                        <span className="w-4 h-0.5 bg-current"></span>
+                        <span>Day Off</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Restore Pattern Button */}
+                  {(selectedShift.label.includes('Manual') || selectedShift.isDayOff) && (
+                    <button
+                      onClick={handleToggleDayOff}
+                      className="w-full py-2 text-[9px] uppercase tracking-widest font-bold transition-colors border border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
+                    >
+                      ↺ Restore to Pattern
+                    </button>
+                  )}
+
+                  {/* Time Edit (only for working shifts) */}
                   {!selectedShift.isDayOff && (
                     <>
-                      <div className="flex items-center justify-center gap-2 mt-4 mb-2">
-                        <span className="text-[9px] uppercase tracking-widest font-bold text-fashion-accent">Edit Hours</span>
+                      <div className="flex items-center justify-center gap-2 mt-2 mb-2 border-t border-fashion-black/10 dark:border-fashion-white/10 pt-4">
+                        <span className="text-[9px] uppercase tracking-widest font-bold opacity-60">Custom Hours</span>
                       </div>
                       <div className="flex items-center gap-2 justify-center">
                         <input

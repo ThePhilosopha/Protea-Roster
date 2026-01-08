@@ -60,13 +60,16 @@ export interface ShiftState {
 /**
  * Centralized logic for determining shift type and visual representation.
  * Rules:
- * - If not working -> Off / Dash
+ * - If marked day off (manual override) -> Off / Dash
+ * - If manual shiftType override exists -> use that type
  * - If Saturday -> Half / Hollow
  * - Otherwise -> Normal / Solid
  */
 export const calculateShiftState = (staff: StaffMember, day: DayStatus): ShiftState => {
-  // 1. Check for manual day-off override first
+  // 1. Check for manual override first
   const override = staff.overrides?.find(o => o.date === day.fullDateStr);
+
+  // 1a. Day off override
   if (override?.isDayOff) {
     return {
       isWorking: false,
@@ -87,7 +90,26 @@ export const calculateShiftState = (staff: StaffMember, day: DayStatus): ShiftSt
     };
   }
 
-  // Saturday Rule: Saturdays are automatically Half shifts
+  // 2. Check for manual shift type override (Half or Normal)
+  if (override?.shiftType) {
+    if (override.shiftType === 'Half') {
+      return {
+        isWorking: true,
+        shiftType: 'Half',
+        visualType: 'Hollow',
+        label: 'Half Shift (Manual)'
+      };
+    }
+    // Explicit Normal shift (overrides Saturday rule)
+    return {
+      isWorking: true,
+      shiftType: 'Normal',
+      visualType: 'Solid',
+      label: 'Normal Shift (Manual)'
+    };
+  }
+
+  // 3. Saturday Rule: Saturdays are automatically Half shifts
   const isSaturday = day.dayName === 'SAT';
 
   if (isSaturday) {
