@@ -1,41 +1,43 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RosterHeader } from './components/RosterHeader';
 import { RosterGrid } from './components/RosterGrid';
 import { AdminModal } from './components/AdminModal';
 import { useRosterData, DEMO_CSV_URL } from './hooks/useRosterData';
-import { generateDateRange } from './utils/rosterLogic';
-import { DisplayMode, StaffMember } from './types';
+import { generateDateRange, calculateShiftState } from './utils/rosterLogic';
+import { DisplayMode, StaffMember, DayStatus } from './types';
 
 interface AppProps {
   staffData?: StaffMember[];
 }
 
+// Constants for view limits
+const USER_DAYS = 30;  // Regular users see 30 days
+const ADMIN_MAX_DAYS = 60;  // Admins can see up to 60 days
+
 const App: React.FC<AppProps> = ({ staffData }) => {
-  // Settings State (Persisted)
-  const [daysToShow, setDaysToShow] = useState(() => parseInt(localStorage.getItem('protea_days') || '45', 10));
+  // Settings State (Admin days setting persisted)
+  const [adminDays, setAdminDays] = useState(() => parseInt(localStorage.getItem('protea_admin_days') || '30', 10));
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() => (localStorage.getItem('protea_display_mode') as DisplayMode) || 'dots');
 
   const { staff, loading, updateStaffData } = useRosterData(DEMO_CSV_URL, staffData);
 
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Admin UI State - ALWAYS defaults to logged out on page load
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  // Days to show depends on admin status: users get 14 days, admins get their configured amount
+  const daysToShow = isAdminLoggedIn ? adminDays : USER_DAYS;
+
   // Regenerate dates whenever daysToShow changes
   const dates = useMemo(() => generateDateRange(new Date(), daysToShow), [daysToShow]);
 
-  const [darkMode, setDarkMode] = useState(false);
-
-  // Admin UI State
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => localStorage.getItem('protea_admin_logged_in') === 'true');
-
-  // Persist Settings
+  // Persist Admin Settings only (not login state)
   useEffect(() => {
-    localStorage.setItem('protea_days', daysToShow.toString());
+    localStorage.setItem('protea_admin_days', adminDays.toString());
     localStorage.setItem('protea_display_mode', displayMode);
-  }, [daysToShow, displayMode]);
-
-  // Persist admin login state
-  useEffect(() => {
-    localStorage.setItem('protea_admin_logged_in', isAdminLoggedIn.toString());
-  }, [isAdminLoggedIn]);
+  }, [adminDays, displayMode]);
 
   // Toggle Dark Mode Class on Body
   useEffect(() => {
@@ -51,7 +53,7 @@ const App: React.FC<AppProps> = ({ staffData }) => {
   }, [darkMode]);
 
   const handleUpdateSettings = (newDays: number, newDisplayMode: DisplayMode) => {
-    setDaysToShow(newDays);
+    setAdminDays(newDays);
     setDisplayMode(newDisplayMode);
   };
 
@@ -59,6 +61,44 @@ const App: React.FC<AppProps> = ({ staffData }) => {
     setIsAdminLoggedIn(false);
     setIsAdminOpen(false);
   };
+
+  // Export roster for next 14 days as CSV
+  const handleExportRoster = useCallback(() => {
+    const exportDays = 14;
+    const exportDates = generateDateRange(new Date(), exportDays);
+
+    // Build CSV header: Name, Role, then each date
+    const headerRow = ['Name', 'Role', ...exportDates.map(d =>
+      `${d.dayName} ${d.dayNumber}`
+    )];
+
+    // Build data rows for each staff member
+    const dataRows = staff.map(person => {
+      const shifts = exportDates.map(day => {
+        const shiftState = calculateShiftState(person, day);
+        if (shiftState.shiftType === 'Off') return 'OFF';
+        if (shiftState.shiftType === 'Half') return 'HALF';
+        return 'FULL';
+      });
+      return [person.name, person.role, ...shifts];
+    });
+
+    // Combine and create CSV content
+    const csvContent = [headerRow, ...dataRows]
+      .map(row => row.join(','))
+      .join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `protea-roster-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [staff]);
 
   if (loading) {
     return (
@@ -76,6 +116,7 @@ const App: React.FC<AppProps> = ({ staffData }) => {
         toggleDarkMode={() => setDarkMode(!darkMode)}
         onLoginClick={() => setIsAdminOpen(true)}
         isAdmin={isAdminLoggedIn}
+        onExport={handleExportRoster}
       />
 
       <main className="fade-in mb-20">
@@ -114,7 +155,11 @@ const App: React.FC<AppProps> = ({ staffData }) => {
             <>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-green-500/60"></div>
-                <span>Working</span>
+                <span>Full Day</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-orange-400/60"></div>
+                <span>Half Day</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-gray-300/60 dark:bg-gray-600/60"></div>
@@ -136,7 +181,7 @@ const App: React.FC<AppProps> = ({ staffData }) => {
         isLoggedIn={isAdminLoggedIn}
         onLogin={() => setIsAdminLoggedIn(true)}
         onLogout={handleLogout}
-        currentDays={daysToShow}
+        currentDays={adminDays}
         displayMode={displayMode}
         onSaveSettings={handleUpdateSettings}
         staffData={staff}

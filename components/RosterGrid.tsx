@@ -45,9 +45,67 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
 
+  // Quick cycle handler for admin mode: Normal → Half → Off → Normal
+  const handleQuickCycle = (person: StaffMember, day: DayStatus, shiftState: any) => {
+    if (!onUpdateStaff) return;
+
+    const newStaff = staff.map(p => {
+      if (p.id !== person.id) return p;
+
+      const currentOverrides = p.overrides ? [...p.overrides] : [];
+      const existingIndex = currentOverrides.findIndex(o => o.date === day.fullDateStr);
+      const currentOverride = existingIndex >= 0 ? currentOverrides[existingIndex] : null;
+
+      // Determine current state and cycle to next
+      // States: Normal (solid) → Half (hollow) → Off (dash) → Normal
+      let nextOverride: any = null;
+
+      if (currentOverride?.isDayOff) {
+        // Currently Off → Back to Normal (remove override to restore pattern default)
+        if (existingIndex >= 0) {
+          currentOverrides.splice(existingIndex, 1);
+        }
+      } else if (currentOverride?.shiftType === 'Half' || (!currentOverride && shiftState.shiftType === 'Half')) {
+        // Currently Half → Switch to Off
+        nextOverride = {
+          date: day.fullDateStr,
+          isDayOff: true,
+          shiftType: undefined
+        };
+      } else {
+        // Currently Normal (or default) → Switch to Half
+        nextOverride = {
+          date: day.fullDateStr,
+          startTime: '08:00',
+          endTime: '13:00',
+          isDayOff: false,
+          shiftType: 'Half'
+        };
+      }
+
+      if (nextOverride) {
+        if (existingIndex >= 0) {
+          currentOverrides[existingIndex] = nextOverride;
+        } else {
+          currentOverrides.push(nextOverride);
+        }
+      }
+
+      return { ...p, overrides: currentOverrides };
+    });
+
+    onUpdateStaff(newStaff);
+  };
+
   const handleShiftClick = (person: StaffMember, day: DayStatus, shiftState: any) => {
-    // Allow admin to click any cell, non-admin only working shifts
-    if (!isAdmin && !shiftState.isWorking) return;
+    // Admin mode: quick cycle through states
+    if (isAdmin && onUpdateStaff) {
+      handleQuickCycle(person, day, shiftState);
+      return;
+    }
+
+    // Non-admin: only show modal for working shifts
+    if (!shiftState.isWorking) return;
 
     const times = shiftState.isWorking
       ? getShiftTimes(person, day.fullDateStr, shiftState.shiftType as ShiftType)
@@ -299,7 +357,9 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
                             ) : (
                               <div className={clsx(
                                 "w-10 h-16 rounded",
-                                isWorking ? "bg-green-500/50 dark:bg-green-500/40" : "bg-gray-300/50 dark:bg-gray-600/40"
+                                !isWorking && "bg-gray-300/50 dark:bg-gray-600/40",
+                                isWorking && shiftState.shiftType === 'Half' && "bg-orange-400/60 dark:bg-orange-500/50",
+                                isWorking && shiftState.shiftType === 'Normal' && "bg-green-500/50 dark:bg-green-500/40"
                               )}></div>
                             )}
                           </div>
@@ -360,8 +420,8 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
                       <button
                         onClick={() => handleSetShiftType('Normal')}
                         className={`flex-1 py-3 border text-[9px] uppercase tracking-widest font-bold transition-all flex flex-col items-center gap-1.5 ${selectedShift.shiftType === 'Normal' && !selectedShift.isDayOff
-                            ? 'bg-fashion-black text-fashion-white dark:bg-fashion-white dark:text-fashion-black border-fashion-black dark:border-fashion-white'
-                            : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-black/10 dark:hover:bg-fashion-white/10'
+                          ? 'bg-fashion-black text-fashion-white dark:bg-fashion-white dark:text-fashion-black border-fashion-black dark:border-fashion-white'
+                          : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-black/10 dark:hover:bg-fashion-white/10'
                           }`}
                       >
                         <span className="w-3 h-3 rounded-full bg-current"></span>
@@ -372,8 +432,8 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
                       <button
                         onClick={() => handleSetShiftType('Half')}
                         className={`flex-1 py-3 border text-[9px] uppercase tracking-widest font-bold transition-all flex flex-col items-center gap-1.5 ${selectedShift.shiftType === 'Half' && !selectedShift.isDayOff
-                            ? 'bg-fashion-black text-fashion-white dark:bg-fashion-white dark:text-fashion-black border-fashion-black dark:border-fashion-white'
-                            : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-black/10 dark:hover:bg-fashion-white/10'
+                          ? 'bg-fashion-black text-fashion-white dark:bg-fashion-white dark:text-fashion-black border-fashion-black dark:border-fashion-white'
+                          : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-black/10 dark:hover:bg-fashion-white/10'
                           }`}
                       >
                         <span className="w-3 h-3 rounded-full border-2 border-current"></span>
@@ -384,8 +444,8 @@ export const RosterGrid: React.FC<RosterGridProps> = ({
                       <button
                         onClick={() => handleSetShiftType('Off')}
                         className={`flex-1 py-3 border text-[9px] uppercase tracking-widest font-bold transition-all flex flex-col items-center gap-1.5 ${selectedShift.isDayOff
-                            ? 'bg-fashion-accent text-white border-fashion-accent'
-                            : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-accent/10'
+                          ? 'bg-fashion-accent text-white border-fashion-accent'
+                          : 'border-fashion-black/40 dark:border-fashion-white/40 hover:bg-fashion-accent/10'
                           }`}
                       >
                         <span className="w-4 h-0.5 bg-current"></span>

@@ -6,6 +6,7 @@ interface RosterHeaderProps {
   toggleDarkMode: () => void;
   onLoginClick: () => void;
   isAdmin: boolean;
+  onExport?: () => void;
 }
 
 export const RosterHeader: React.FC<RosterHeaderProps> = ({
@@ -13,7 +14,8 @@ export const RosterHeader: React.FC<RosterHeaderProps> = ({
   darkMode,
   toggleDarkMode,
   onLoginClick,
-  isAdmin
+  isAdmin,
+  onExport
 }) => {
   return (
     <header className="mb-12 pt-8">
@@ -29,6 +31,17 @@ export const RosterHeader: React.FC<RosterHeaderProps> = ({
         </div>
 
         <div className="flex gap-4">
+          {onExport && (
+            <button
+              onClick={onExport}
+              className="text-[10px] font-sans tracking-widest uppercase hover:underline font-bold opacity-90 hover:opacity-100 flex items-center gap-1"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+              Export
+            </button>
+          )}
           <button
             onClick={toggleDarkMode}
             className="text-[10px] font-sans tracking-widest uppercase hover:underline font-bold opacity-90 hover:opacity-100"
